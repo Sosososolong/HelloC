@@ -801,6 +801,572 @@ char b[30];
 b -> b + 1      (首地址)相差1
 
 
+=================================字符串替换 replace_substr()===================================
+// 在字符串(src)中找到匹配的子字符串(sub), 然后用另一个字符串(new_sub)替换子字符串(sub), (dst)为输出参数
+int replace_substr(char* src, char** dst, char* sub, char* new_sub)
+{
+	if (src == NULL || dst == NULL || sub == NULL || new_sub == NULL)
+	{
+		return -1;
+	}
+	char* start = src;
+	char* p = NULL;
+	char tmp[512] = { 0 };
+	int len = 0;
+	do
+	{
+		p = strstr(start, sub);
+		if (p != NULL)
+		{
+			len = 0;
+			len = p - start;
+			if (len > 0)
+			{
+				strncat(tmp, start, len);
+			}
+			strncat(tmp, new_sub, strlen(new_sub));
+			// 重新设置起点位置
+			start = p + strlen(sub);
+		}
+		else
+		{
+			strcat(tmp, start);
+			break;
+		}
+	} while (*start != '\0');
+	// 新字符串要传到主函数中, 所以此子函数调用结束不能释放, 需要在对空间开辟内存空间, 然后由主函数手动释放
+	char* buf = (char*)malloc(strlen(tmp) + 1);
+	strcpy(buf, tmp);
+
+	// 间接赋值
+	*dst = buf;
+	return 0;
+}
+
+// 调用
+int main(){
+	char* p = "abcd23424abcd2222abcd888qqqqq";
+	char* buf = NULL; // 在replace_substr函数中分配空间
+	int ret = 0;
+	ret = replace_substr(p, &buf, "abcd", "mmmnnn");
+	if (ret != 0)
+	{
+		printf("replace_substr() error: %d\n", ret);
+		return ret;
+	}
+	printf("p = %s\n", p);
+	printf("buf = %s\n", buf);
+
+	if (buf != NULL)
+	{
+		free(buf);
+		buf = NULL;
+	}
+}
+
+
+=================================字符串分割/分割字符串 split_string()===================================
+// 用一个字符(c)分割字符串(str), 放到数组(buf)中, 并返回数组的长度(n)
+int split_string(const char* str, char c, char buf[10][30], int* count)
+{
+	if (str == NULL || count == NULL)
+	{
+		return -1;
+	}
+	// str = "sfjlsf,sfa,abcd,3dedd,sss,aaa"
+	const char* start = str;
+	char* p = NULL;
+	int i = 0;
+	do
+	{
+		p = strchr(start, c);
+		if (p != NULL)
+		{
+			int len = p - start;
+			strncpy(buf[i], start, len);
+			// 结束符
+			buf[i][len] = 0;
+			i++;
+			// 重新设置起点位置
+			start = p + 1;
+		}
+		else
+		{
+			strcpy(buf[i], start);
+			i++;
+			break;
+		}
+	} while (*start != 0);
+	if (i == 0)
+	{
+		return -2;
+	}
+	*count = i;
+	return 0;
+}
+
+// 调用
+int main(){
+	const char* p = "sfjlsf,sfa,abcd,3dedd,sss,aaa";
+	char buf[10][30] = { 0 };
+	int n = 0;
+	int i = 0;
+	int ret = 0;
+	ret = split_string(p, ',', buf, &n);
+	if (ret != 0)
+	{
+		printf("split_string() error: %d\n", ret);
+		return ret;
+	}
+	for (i = 0; i < n; i++)
+	{
+		printf("%s\n", buf[i]);
+	}
+	printf("\n");
+}
+
+
+=================================数组指针===================================
+1.先定义数组类型, 根据类型定义指针变量
+typedef int A[10]; // A数组类型
+A* p = NULL; // 数组指针类型变量
+A a;
+p = &a;
+
+2.1 先定义数组指针类型, 根据类型定义变量
+// 和指针数组写法 int* a[10]; 很类型  相比多了圆括号
+typedef int(*P)[10];
+P q; // 数组指针变量q
+q = &a;
+
+2.2 int(*q)[10]; // 没有typedef, q是数组指针变量
+q = &a;
+
+
+=================================二维数组数组名===================================
+int a[][4] = { 1,2,3,4,5,6,7,8,9,10,11,12 };
+a: 代表整个数组, 值是整个数组的首元素 {1,2,3,4} 地址
+a+1: 值第二个元素(也是一个数组, 步长为4*4)地址, 等价于&a[1]  **************
+
+*a: a是整个数组的首元素 "{1,2,3,4}" 的地址, *a为取整个地址的首元素 "{1,2,3,4}", 值为它的首元素 "1" 的地址
+*(a+1): 整个数组地址加1, 取/代表第二个元素 "{5,6,7,8}", 值为 第二个元素 "{5,6,7,8}" 的首元素"5"的地址, 等价于a[1] ***********
+
+*(a+1) + 1: (a+1)的值代表一级数组的第二个元素的地址,步长4*4, *(a+1)指向一级数组的第二个元素二级数组 "{5,6,7,8}",等价a[1], 值为"{5,6,7,8}"的首元素地址 "5" 的地址, 步长4
+(a+1)和*(a+1)值相等, 代表的类型不同, 步长不同
+再加1就得到"{5,6,7,8}"第二个元素"6"的地址, 所以*(a+1)+1 相当于 &a[1][1];
+
+
+=================================二位数组作为形参===================================
+1.数组作为形参都会退化为指针
+2.重点在于指针的步长一致不一致
+
+int a[][4] = { 1,2,3,4,5,6,7,8,9,10,11,12 }; //二位数组的形参步长取决于二级数组的长度(4)
+void print_array(int (*p)[4])
+
+
+
+
+
+
+=================================C++ 基础===================================
+1. 常量const int a = 10, 在编译期间, 在常量表中添加键值对 "a" => 10, 当代码中遇到"a"的时候, 就会把10取出来, "a"不是存储在内存中开辟的一个变量, 它没有指针, 无法修改
+2. 引用: 变量的别名
+	int a = 10;
+	// int & 使用引用类型数据, re就是a的别名
+	// 引用一旦声明, 不可变更, re永远是a的别名
+	// 声明的同时必须初始化, 声明之后使用re就相当与使用a
+	int & re = a; 
+
+	本质: 常量指针
+	int & re = a; 编译器实际上进行的操作-> int* const re = &a;
+
+
+=================================C++ 内联函数===================================
+inline void printAB(int a, int b)
+{
+    cout << "a = " << a << ", b = " << b << endl;
+}
+(只有代码比较少的不包含for循环的简单的代码) 加inline使得函数称为inline函数, 由编译器处理, c++编译器直接将函数体插入在函数调用的地方(减少压栈出栈开销)
+当函数体的执行开销 远远大于压栈, 跳转和返回所用的开销的时候, 内联将毫无意义
+
+
+
+=================================C++ 函数指针===================================
+int func(int a, int b){
+	cout << "func" << endl;
+}
+1.定义一种函数类型
+typedef int(MY_FUNC)(int, int);
+
+MY_FUNC* fp = NULL;
+fp = func;
+fp(10,20); // 或者(*fp)(10,20); 
+
+2.定义一个指向这种函数类型的指针类型
+typedef int(*MY_FUNC_P)(int, int);
+
+MY_FUNC_P fp2 = NULL;
+fp2 = func;
+fp2(10,20);
+
+3.
+int(*fp3)(int,int) = NULL;
+fp3 = func;
+fp3(10,20);
+
+=================================C++ 构造函数的初始化列表===================================
+class A{
+public:
+	A(int a){
+		cout << "A()..." << endl;
+	}
+	~A(){
+		cout << "~A()..." << endl;
+	}
+	void printA(){
+		cout << "a = " << m_a <<endl;
+	}
+private:
+	int m_a;
+}
+
+class B{
+public:
+	B(A &a1, A &a2, int b):m_a1(a1), m_a2(a2)
+	{
+		m_b = b;
+	}
+
+private:
+	int m_b;
+	A m_a1;
+	A m_a2;
+}
+
+
+=================================C++ new&delete===================================
+相对c语言中的malloc和free
+new: 在堆区开辟一块空间(存类的对象), 并且调用类的构造函数
+delete: 释放堆区的一块空间(类的对象所在内存空间), 并且调用对象的析构函数
+
+
+=================================C++ 类的静态成员===================================
+class A{
+    static int a; // 不能在类里面初始化
+}
+int A::a = 10; // 在类的外面初始化静态成员变量
+
+
+=================================C++ 友元函数===================================
+当一个函数要频繁通过调用一个对象的get,set方法获取对象的某个私有属性, 就会出现频繁的压栈出栈开销, 怎么让这个外部函数直接使用对象的私有字段呢?
+解:	在对象所在类的内部将 这个外部函数声明为 该类的友元函数:
+	friend double PointDistance(Point& p1, Point& p2); // 声明后: 获取的p1的私有字段x -> p1.getX() 就可以直接写成 p1.x
+
+还可以用同样的方式声明友元类
+
+
+=================================C++ 操作符重载===================================
+加号
+Complex c3 = c1 + c2; // 相当于调用函数 Complex operator+(c1, c2);
+
+
+=================================C++ 对象的方法调用底层实现===================================
+=================================C++ const修饰的对象的引用调用成员方法的时候报错===================================
+类{
+	方法();
+}
+类 对象 = new 类;
+
+对象.方法() => 实际上是调用：方法(&对象)
+其中类中的方法的参数是一个 "类*" 类型, const修饰的对象的引用调用成员方法的时候, 实际传入的是一个 "const 类*" 类型
+
+类{
+	对象方法() const;
+}
+在方法声明和实现后面加上const, 那么“方法”的参数就是一个 “const 类*” 类型
+
+
+
+=================================C++ 只能指针===================================
+#include <memory>
+
+{
+	// 相当于 int* ptr = new int;
+	auto_ptr<int> ptr(new int);
+	*ptr = 20;
+}
+
+
+=================================C++ 继承/子类内存布局/子类父类的构造函数调用过程===================================
+class Student2{
+public:
+	Student2 Student2(int id, string name, int score): Student(id, name){
+		this->score = score;
+	}
+}
+创建子类对象的时候, 先调用父类的构造函数创建一个父类对象A, 然后在调用子类自己的构造方法，完善子类的其他部分B。 "A+B"构成了整个子类对象
+
+
+=================================C++ 多态/virtual虚方法===================================
+现象: 一个基类型的对象A调用了一个方法m(), m()是一个虚方法，所有的子类都重写了方法m(), 对象A里面装的可能是基类的实例也可能是子类的实例, 是哪个类的实例就调用哪个类的方法m();
+意义: 随着子类却可以不断的拓展 将这个基类型作为形参的方法可以一直使用
+
+静态联编和动态联编: 程序没有运行的时候 编译器不知道父类指针指向的具体是父类对象还是子类对象 既然指针类型是父类的 编译器默认指针指向父类对象 所以默认会调用父类的成员方法(静态联编)
+使用虚方法后就有了多态的现象 多态的发生是动态联编  是在程序执行时判断具体父类指针应该调用的方法
+
+
+*虚析构函数(析构函数有时候也需要多态的支持): 当一个方法以一个基类(A* a)作为形参, 在函数中, delete a, 那么默认情况下也只会调用A类的析构函数, 如果传进来的实参是一个子类, 那么这个子类对象
+在创建的过程中,先调用了父类的构造方法创建了一个父类的对象,在调用子类的构造方法完善了子类其余的部分初始化.
+此是delete a的时候默认只会调用A的析构函数,只会释放子类对象中的A的构造函数创建的A对象,不会释放子类自身其余的部分,发生内存泄漏
+解决思路就是让"delete a" 的时候发生多态, 方法跟上面一样, 在父类A的析构方法前面加上virtual关键字即可
+
+
+=================================C++ 多态原理===================================
+虚函数表和vptr指针
+1.当类中声明虚函数时 编译器会在类中生成一个虚函数表
+2.虚函数表是一个存储类成员函数指针的数据结构
+3.虚函数表是由编译器自动生成和维护的
+4.virtual成员函数会被编译器放入虚函数表中
+5.存在虚函数时 每个对象中都有一个指向虚函数表的指针(vptr指针)
+
+
+=================================C++ 纯虚函数===================================
+类似于接口 类似C#中的抽象类 不能实例化
+1.virtual double getArea() = 0;
+2.如果一个类含有一个类似以上的抽象函数 那么这个类就是一个抽象类
+3.抽象类的子类需要重写抽象类中的纯虚函数
+4.抽象类作为抽象参数 依然可以实现多态
+
+
+
+=================================C++进阶 函数模板===================================
+将类型参数化(类似于泛型)
+
+template<class T> // template<typename T>
+void mySwap(T& a, T& b){
+	T temp = a;
+	a = b;
+	b = temp;
+}
+
+原理: 编译阶段编译器会对模板函数进行两次编译, 第一次编译会正常编译模板函数, 第二次编译阶段根据模板函数调用时候传进去的参数类型, 在当前文件中会额外生成一个对应类型的普通函数
+比如调用函数mySwap(1,2), 传进去的是两个整形, 匹配上模板函数, 那么会生成以下具体函数:
+void mySwap(int& a, int& b){
+	T temp = a;
+	a = b;
+	b = temp;
+}
+
+
+=================================C++进阶 类模板===================================
+template<class T>
+class Person{
+public:
+	Person(T id, T age){
+		this->mid = id;
+		this->mAge = age;
+	}
+private:
+	T mid;
+	T mAge;
+}
+
+使用时指定一个类型:
+Person<int> p(10,20);
+
+
+=================================C++进阶 类模板中的静态成员===================================
+类模板中的静态成员(比如a)其实属于具体类的, 没有具体类, 静态成员没有意义, 不同的具体类中的静态成员a是不同的
+
+template<class T>
+class Person{
+public:
+	static int a;
+}
+
+// 静态成员类外初始化
+template<class T> int Person<T>::a = 0;
+
+Person<int> p1, p2, p3;
+Person<int> pp1, pp2, pp3;
+p1.a = 10;
+pp1.a = 100; 
+那么p1,p2,p3都是10, pp1, pp2, pp3都是100;
+
+
+=================================C++进阶 对右值去引用??===================================
+一个函数:
+void PushBack(T& data){...}
+
+调用函数:
+int a = 1;
+PushBack(a); //√
+PushBack(1); //× 因为无法直接对右值取地址
+
+重载函数void PushBack(T& data)
+void PushBack(T&& data){...} // 实现完全一样
+
+
+
+=================================C++进阶 类型转换===================================
+static_cast			用于内置的数据类型的转换; 转换具有继承关系的对象指针或者引用, 子类型转父类型或者父类型转子类型都可以
+	int a = 10;
+	char c = static_cast<char>(a);
+
+dynamic_cast		派生类(指针或引用)->基类(指针或引用), 转换前会进行对象类型检查
+
+const_cast			主要对const的转换(增加或者去除变量的const特性给新的变量)
+
+reinterpret_cast	用于没有任何关联之间的转换, 比如一个字符指针转换为一个整形数
+
+
+
+=================================C++进阶 异常对象生命周期===================================
+情况1: 调用拷贝构造
+void func(){
+	// 在抛出异常后, 此异常对象不会析构
+	throw Exception();
+}
+
+void test(){
+	try{
+	}catch(Exception e){
+		// 这里调用拷贝构造将上面func()函数抛出的异常拷贝一份给e, 此函数执行完毕(异常对象catch处理完之后), 上面的func()函数抛出的异常对象和e都会析构
+	}
+}
+
+
+情况2: 捕获异常对象引用
+void func(){
+	// 在抛出异常后, 此异常对象不会析构
+	throw Exception();
+}
+
+void test(){
+	try{
+	}catch(Exception& e){
+		// 这里不会调用拷贝构造, e就是上面func()函数抛出异常的引用, 此函数执行完毕(异常对象catch处理完之后), 上面func()函数所抛出的异常对象析构
+	}
+}
+
+
+情况3: 捕获异常对象指针
+void func(){
+	// 如果捕获此异常的指针, 那么下面这样构造对象就会在抛出异常后就析构, 那么下面test()中捕获的指针将会是一个野指针, 所以要在堆区开辟异常对象的空间, 手动控制异常对象的生命周期
+	// throw Exception();
+
+	throw new Exception();
+}
+
+void test(){
+	try{
+	}catch(Exception* e){
+		// TODO: 异常处理
+
+		// 最后手动释放上面func()函数抛出的异常对象
+		delete e;
+	}
+}
+
+
+=================================C++进阶 标准输出_格式化输出===================================
+1.cout << "hello world!" << endl;
+
+2.输出一个字符, 支持链式编程
+cout.put('h').put('e').put('l') << endl;
+
+3.写/输出一个字符串(二进制流的输出)
+char str[] = "hello world!";
+cout.write(str, strlen(str));
+
+4.格式化输出
+	4.1 成员方法的方式
+	int number = 10;
+	cout << number << endl; // 10
+	cout.unsetf(ios::dec); // 卸载当前默认的十进制输出方式
+	cout.setf(ios::oct); // 八进制输出
+	cout.setf(ios::showbase); // 把八进制开头的0显示出来
+	cout << number << endl; // 012
+
+	4.2 通过控制符的方式(需要包含头文件: #include <iomanip>)
+	int number2 = 10;
+	// 0xa~~~~~~~
+	cout << hex
+		<< setiosflags(ios::showbase)
+		<< setw(10)
+		<< setfill('~')
+		<< setiosflags(ios::left)
+		<< number2
+		<< endl;
+
+
+=================================C++进阶 文件读写基本操作===================================
+#include <fstream>
+// 拷贝文件(包含文件读写的基本操作)
+void copy_file() {
+	char* file_name = "D:/others.project/clang/zerg/HelloC/HelloC/test_file_io.txt";
+	char* target_file_name = "D:/others.project/clang/zerg/HelloC/HelloC/test_file_io_bak.txt";
+	ifstream ism(file_name, ios::in); //只读方式打开文件
+	ofstream osm(target_file_name, ios::out); //写方式打开文件
+	// ofstream osm(target_file_name, ios::out | ios::app); // 追加的方式打开文件,没执行一次程序,都会追加内容
+	if (!ism)
+	{
+		cout << "打开文件失败" << endl;
+		return;
+	}
+	// 读文件
+	char ch;
+	while (ism.get(ch))
+	{
+		cout << ch;
+		osm.put(ch); // 流写入一个字符
+	}
+	// 关闭文件
+	ism.close();
+	osm.close();
+}
+
+
+=================================C++进阶 二进制文件读写(可以将对象保存到文件再从文件读取出对象, 对象是以二进制存在于内存中的)===================================
+class Person {
+public:
+	Person() {}
+	Person(int age, int id) :age(age), id(id) {}
+	void Show() {
+		cout << "Age: " << this->age << " Id: " << this->id << endl;
+	}
+public:
+	int age;
+	int id;
+};
+
+// 二进制文件读写-对象序列化
+void seri_obj_then_save_to_file() {
+	// 文本模式读写就是会对换行操作符进行一个转换(windows平台), 在Linux平台文本模式读写和二进制模式读写没有区别
+	Person p1(10, 20), p2(30, 40); // 二进制形式存储在内存中
+	// 把p1, p2写进文件
+	char* target_file_name = "D:/others.project/clang/zerg/HelloC/HelloC/test_file_io_bak.txt";
+	ofstream osm(target_file_name, ios::out | ios::binary); // 二进制模式写
+	osm.write((char*)&p1, sizeof(Person)); // 二进制方式写文件
+	osm.write((char*)&p2, sizeof(Person)); 
+	osm.close();
+}
+void read_binary_file() {
+	char* target_file_name = "D:/others.project/clang/zerg/HelloC/HelloC/test_file_io_bak.txt";
+	ifstream ism(target_file_name, ios::in | ios::binary);
+	Person p1;
+	Person p2;
+	ism.read((char*)&p1, sizeof(Person)); // 从文件读取数据
+	ism.read((char*)&p2, sizeof(Person));	
+	p1.Show(); // Age: 10 Id: 20
+	p2.Show(); // Age: 30 Id: 40
+}
+
+
+
+
+
+
 
 
 

@@ -78,12 +78,13 @@ int str_contains(char* src, const char* substr, int* count) {
 查询笔记中带关键字的片段笔记
 */
 int found_snippet(const char* file_name, const char* keyword)
-{
+{	
 	FILE* fp = fopen(file_name, "r");
 	char buf[600] = { 0 };
 	while (1)
-	{
+	{		
 		fgets(buf, sizeof(buf), fp);
+		
 		// int count1 = 0;
 		int count2 = 0;
 		// 如果是"====xxx===="这样的标题行, 查看是否包含关键字
@@ -110,8 +111,9 @@ int found_snippet(const char* file_name, const char* keyword)
 		if (feof(fp))
 		{
 			break;
-		}
+		}		
 	}
+	return 0;
 }
 
 // 去处字符串inbuf首尾的空格, 去除空格后的字符串为outbuf, 成功返回0
@@ -190,22 +192,146 @@ int get_value_by_key(char* key_value_buf, char* key_buf, char* value_buf, int* v
 	return 0;
 }
 
-int main(int argc, char* argv[])
+#pragma region 在堆区创建一个长度为3的二维数组(三个字符串), 打印数组, 最后释放堆区内存
+
+// 堆区创建一个二维数组(3个字符串)并返回
+char** get_mem(int n)
 {
+	n = 3;
+	char** buf = (char**)malloc(n * sizeof(char*)); // char* buf[3]
+	if (buf == NULL)
+	{
+		return -1;
+	}
+	for (int i = 0; i < n; i++)
+	{
+		buf[i] = malloc(30 * sizeof(char));
+		char str[30];
+		sprintf(str, "test%d%d", i, i);
+		strcpy(buf[i], str);
+	}
+	return buf;
+}
+
+// 打印二位数组
+void print_buf(char** buf, int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		printf("%s, ", buf[i]);
+	}
+	printf("\n");
+}
+
+// 释放堆区空间
+void free_buf(char** buf, int n)
+{
+	for (int i = 0; i < n; i++)
+	{
+		free(buf[i]);
+		buf[i] = NULL;
+	}
+	if (buf != NULL)
+	{
+		free(buf);
+		buf = NULL;
+	}
+}
+#pragma endregion
+
+// 在字符串(src)中找到匹配的子字符串(sub), 然后用另一个字符串(new_sub)替换子字符串(sub), (dst)为输出参数
+int replace_substr(char* src, char** dst, char* sub, char* new_sub)
+{
+	if (src == NULL || dst == NULL || sub == NULL || new_sub == NULL)
+	{
+		return -1;
+	}
+	char* start = src;
+	char* p = NULL;
+	char tmp[512] = { 0 };
+	int len = 0;
+	do
+	{
+		p = strstr(start, sub);
+		if (p != NULL)
+		{
+			len = 0;
+			len = p - start;
+			if (len > 0)
+			{
+				strncat(tmp, start, len);
+			}
+			strncat(tmp, new_sub, strlen(new_sub));
+			// 重新设置起点位置
+			start = p + strlen(sub);
+		}
+		else
+		{
+			strcat(tmp, start);
+			break;
+		}
+	} while (*start != '\0');
+	// 新字符串要传到主函数中, 所以此子函数调用结束不能释放, 需要在对空间开辟内存空间, 然后由主函数手动释放
+	char* buf = (char*)malloc(strlen(tmp) + 1);
+	strcpy(buf, tmp);
+
+	// 间接赋值
+	*dst = buf;
+	return 0;
+}
+
+// 用一个字符(c)分割字符串(str), 放到数组(buf)中, 并返回数组的长度(n)
+int split_string(const char* str, char c, char buf[10][30], int* count)
+{
+	if (str == NULL || count == NULL)
+	{
+		return -1;
+	}
+	// str = "sfjlsf,sfa,abcd,3dedd,sss,aaa"
+	const char* start = str;
+	char* p = NULL;
+	int i = 0;
+	do
+	{
+		p = strchr(start, c);
+		if (p != NULL)
+		{
+			int len = p - start;
+			strncpy(buf[i], start, len);
+			// 结束符
+			buf[i][len] = 0;
+			i++;
+			// 重新设置起点位置
+			start = p + 1;
+		}
+		else
+		{
+			strcpy(buf[i], start);
+			i++;
+			break;
+		}
+	} while (*start != 0);
+	if (i == 0)
+	{
+		return -2;
+	}
+	*count = i;
+	return 0;
+}
+
+int main(int argc, char* argv[])
+{	
 	if (argc == 3)
 	{
 		// 查找笔记片段
 		found_snippet(argv[1], argv[2]);
 		return 0;
 	}
-	char** buf = NULL;
-	int n = 0;
-	buf = get_mem(n);
-	if (buf == NULL)
-	{
-		printf("get_mem() error\n");
-		return -1;
-	}
+	int a[][4] = { 1,2,3,4,5,6,7,8,9,10,11,12 };
+	printf("a: %d, a+1: %d\n", (int)a, (int)(a + 1));
+	printf("a+1=%d, *(a+1) = %d\n", (int)(a+1), (int)(*(a+1)));
+
+	
 
 	// system("pause");
 	return 0;

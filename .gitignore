@@ -8,7 +8,7 @@
 *.elf
 
 # CMake files
-CMakeLists.txt
+# CMakeLists.txt
 .vs
 out/
 
