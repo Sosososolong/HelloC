@@ -624,10 +624,317 @@ void test_advance_linklist() {
 }
 #pragma endregion
 
+#pragma region C语言实现循环链表-基于企业链表
+// 循环链表节点
+typedef struct CIRCLELINKNODE {
+	struct CIRCLELINKNODE* next;
+}CircleLinkNode;
+
+// 循环链表
+typedef struct CIRCLELINKLIST {
+	// head不保存数据, 初始化的时候, head指向自己, head.next为链表的第一个元素节点
+	CIRCLELINKNODE head;
+	int size;
+}CircleLinkList;
+
+// 比较函数 指针(回调函数)
+typedef int(*COMPARECIRCLELINKNODE)(CircleLinkNode*, CircleLinkNode*);
+
+// 打印函数 指针(回调函数)
+typedef void(*PRINTCIRCLELINKNODE)(CircleLinkNode*);
+
+#define CIRCLELINKLIST_TRUE 1
+#define CIRCLELINKLIST_FALSE 0
+
+// 初始化函数
+CircleLinkList* Init_CircleLinkList() {
+	CircleLinkList* list = (CircleLinkList*)malloc(sizeof(CircleLinkList));
+	if (list == NULL)
+	{
+		return NULL;
+	}
+	list->head.next = &(list->head);
+	list->size = 0;
+	return list;
+}
+
+// 插入函数
+void Insert_CircleLinkList(CircleLinkList* list, int pos, CircleLinkNode* data) {
+	if (list == NULL || data == NULL)
+	{
+		return;
+	}
+	if (pos<0 || pos > list->size)
+	{
+		pos = list->size;
+	}
+	// 查找要插入位置的上一个节点, 索引为(pos-1)的节点
+	CircleLinkNode* prev_node = &(list->head);
+	for (int i = 0; i < pos; i++)
+	{
+		prev_node = prev_node->next;
+	}
+
+	data->next = prev_node->next;
+	prev_node->next = data;
+	list->size++;
+}
+
+// 获得第一个元素
+CircleLinkNode* Front_CircleLinkList(CircleLinkList* list) {
+	if (list == NULL || list->size <= 0)
+	{
+		return NULL;
+	}
+	return list->head.next;
+}
+
+// 根据位置删除
+void RemoveByPos_CircleLinkList(CircleLinkList* list, int pos) {
+	if (list == NULL)
+	{
+		return;
+	}
+	if (pos < 0 || pos >= list->size)
+	{
+		return;
+	}
+	CircleLinkNode* prev_node = &(list->head);
+	for (int i = 0; i < pos; i++)
+	{
+		prev_node = prev_node->next;
+	}
+	// 缓存当前节点, 此节点不是框架申请的, 所以这里最好不要释放掉, 所有的节点都是用户malloc出来的, 让用户去管理即可
+	CircleLinkNode* current_node = prev_node->next;
+	prev_node->next = prev_node->next->next;
+	/*free(current_node);*/
+	list->size--;
+}
+
+// 根据值删除
+void RemoveByValue_CircleLinkList(CircleLinkList* list, CircleLinkNode* data, COMPARECIRCLELINKNODE compare) {
+	if (list == NULL || data == NULL)
+	{
+		return;
+	}
+	CircleLinkNode* current_node = list->head.next;
+	CircleLinkNode* prev_node = &(list->head);
+	while (current_node != &(list->head))
+	{		
+		if (compare(current_node, data) == CIRCLELINKLIST_TRUE)
+		{
+			prev_node->next = current_node->next;
+			list->size--;
+			break;
+		}
+		prev_node = current_node;
+		current_node = current_node->next;
+	}
+}
+
+// 获取链表的长度
+int Size_CircleLinkList(CircleLinkList* list) {
+	if (list == NULL)
+	{
+		return -1;
+	}
+	return list->size;
+}
+
+// 判断是否为空
+int IsEmpty_CircleLinkList(CircleLinkList* list) {
+	if (list->size == 0)
+	{
+		return CIRCLELINKLIST_TRUE;
+	}
+	else {
+		return CIRCLELINKLIST_FALSE;
+	}
+}
+
+// 查找数据的索引
+int Find_CircleLinkList(CircleLinkList* list, CircleLinkNode* data, COMPARECIRCLELINKNODE compare) {
+	if (list == NULL || data == NULL)
+	{
+		return -1;
+	}
+	CircleLinkNode* current_node = list->head.next;
+	int index = 0;
+	while (current_node != &(list->head))
+	{
+		if (compare(current_node, data) == CIRCLELINKLIST_TRUE)
+		{
+			return index;
+		}
+		current_node = current_node->next;
+		index++;
+	}
+	return -1;
+}
+
+// 打印节点
+void Print_CircleLinkList(CircleLinkList* list, PRINTCIRCLELINKNODE print) {
+	if (list == NULL)
+	{
+		return;
+	}
+	CircleLinkNode* current_node = list->head.next;
+	while (current_node != &(list->head))
+	{
+		print(current_node);
+		current_node = current_node->next;
+	}
+}
+
+// 释放内存, 只释放框架自己malloc出来的空间, 即CircleLinkList的空间, 节点空间属于用户创建的, 由用户处理
+void FreeSpace_CircleLinkList(CircleLinkList* list) {
+	if (list == NULL)
+	{
+		return;
+	}
+	free(list);
+}
+
+// 测试
+// 测试自定义数据
+typedef struct TEACHER {
+	CircleLinkNode node;
+	char name[64];
+	int age;
+}Teacher;
+// 定义符合打印函数指针的函数
+void PrintCircleLinkNode(CircleLinkNode* data) {
+	if (data == NULL)
+	{
+		return;
+	}
+	Teacher* t = (Teacher*)data;
+	printf("name: %s, age: %d\n", t->name, t->age);
+}
+// 定义符合比较节点函数指针的函数
+int CompareCircleLinkNode(CircleLinkNode* data1, CircleLinkNode* data2) {
+	if (data1 == NULL || data2 == NULL)
+	{
+		return CIRCLELINKLIST_FALSE;
+	}
+	Teacher* t1 = (Teacher*)data1;
+	Teacher* t2 = (Teacher*)data2;
+	if (strcmp(t1->name, t2->name) == 0 && t1->age == t2->age)
+	{
+		return CIRCLELINKLIST_TRUE;
+	}
+	else {
+		return CIRCLELINKLIST_FALSE;
+	}
+}
+void test_ciclelinklist() {
+	CircleLinkList* list = Init_CircleLinkList();
+	Teacher t1, t2, t3, t4, t5;
+	strcpy(t1.name, "zhangsan");
+	strcpy(t2.name, "lisi");
+	strcpy(t3.name, "wangwu");
+	strcpy(t4.name, "zhaoliu");
+	strcpy(t5.name, "tianqi");
+	t1.age = 21;
+	t2.age = 22;
+	t3.age = 23;
+	t4.age = 24;
+	t5.age = 25;
+	// 数据入链表
+	Insert_CircleLinkList(list, 0, (CircleLinkNode*)&t1);
+	Insert_CircleLinkList(list, 1, (CircleLinkNode*)&t2);
+	Insert_CircleLinkList(list, 2, (CircleLinkNode*)&t3);
+	Insert_CircleLinkList(list, 3, (CircleLinkNode*)&t4);
+	Insert_CircleLinkList(list, 4, (CircleLinkNode*)&t5);
+
+	Teacher t;
+	t.age = 23;
+	strcpy(t.name, "wangwu");
+	// RemoveByValue_CircleLinkList(list, (CircleLinkNode*)&t, CompareCircleLinkNode);
+	int wangwu_pos = Find_CircleLinkList(list, (CircleLinkNode*)&t, CompareCircleLinkNode);
+	printf("wangwu's index is %d\n", wangwu_pos);
+
+	Print_CircleLinkList(list, PrintCircleLinkNode);
+	FreeSpace_CircleLinkList(list);
+}
+#pragma endregion
+
+#pragma region 约瑟夫问题a先移除旧的循环链表再插入新的循环链表b循环报数的时候注意最后一个元素的next指向的是list->head,而不是第一个元素
+typedef struct NUMBER {
+	CircleLinkNode node;
+	int num;
+}Number;
+#define M 8
+#define N 3
+int CompareNumber(CircleLinkNode* data1, CircleLinkNode* data2) {
+	Number* num1 = (Number*)data1;
+	Number* num2 = (Number*)data2;
+	if (num1->num == num2->num)
+	{
+		return CIRCLELINKLIST_TRUE;
+	}
+	else {
+		return CIRCLELINKLIST_FALSE;
+	}
+}
+void PrintNumber(CircleLinkNode* data) {
+	Number* num = (Number*)data;
+	printf("%d\n", num->num);
+}
+void test_yuesefu() {
+	// m个人围成一个圈, 报数报到n的人出列
+	CircleLinkList* list = Init_CircleLinkList();
+	Number num[M];
+	for (int i = 0; i < M; i++)
+	{
+		num[i].num = i + 1;
+		Insert_CircleLinkList(list, i, (CircleLinkNode*)&num[i]);
+	}
+	
+	CircleLinkList* out_list = Init_CircleLinkList();
+	CircleLinkNode* prev_node;
+	CircleLinkNode* node = &(list->head);
+	while (list->size > 1)
+	{
+		for (int i = 0; i < N; i++)
+		{
+			prev_node = node;
+			node = node->next;
+			// 最后一个元素的时候, 默认指向list->head, 需要判断并切换到第一个元素
+			if (node == &(list->head))
+			{
+				node = node->next;
+			}
+		}	
+		
+		// 需要先移除, 然后把这个移出的node添加到新的循环链路里面, 先插入的话, 移除就会出现问题
+		RemoveByValue_CircleLinkList(list, node, CompareNumber); 
+		Insert_CircleLinkList(out_list, out_list->size, node); // TODO: ...
+
+		node = prev_node;
+	}
+	Insert_CircleLinkList(out_list, out_list->size, list->head.next);
+
+	cout << "result: " << endl;
+	Print_CircleLinkList(out_list, PrintNumber); // 3 6 1 5 2 8 4 7
+}
+
+#pragma endregion
 
 
 int main(int argc, char* argv[])
 {
-	test_advance_linklist();
+	test_yuesefu();
+	// m个人围成一个圈, 报数报到n的人出列
+	/*CircleLinkList* list = Init_CircleLinkList();
+	Number num[M];
+	for (int i = 0; i < M; i++)
+	{
+		num[i].num = i + 1;
+		Insert_CircleLinkList(list, i, (CircleLinkNode*)&num[i]);
+	}
+	CircleLinkList* out_list = Init_CircleLinkList();
+	CircleLinkNode* node = list->head.next->next->next;
+	Insert_CircleLinkList(out_list, out_list->size, node);*/
 	return 0;
 }

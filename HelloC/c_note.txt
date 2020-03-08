@@ -2557,6 +2557,265 @@ void test_advance_linklist() {
 #pragma endregion
 
 
+=================================C++进阶 数据结构>> 用C语言基于企业链表实现循环链表===================================
+#pragma region C语言实现循环链表-基于企业链表
+// 循环链表节点
+typedef struct CIRCLELINKNODE {
+	struct CIRCLELINKNODE* next;
+}CircleLinkNode;
+
+// 循环链表
+typedef struct CIRCLELINKLIST {
+	// head不保存数据, 初始化的时候, head指向自己, head.next为链表的第一个元素节点
+	CIRCLELINKNODE head;
+	int size;
+}CircleLinkList;
+
+// 比较函数 指针(回调函数)
+typedef int(*COMPARECIRCLELINKNODE)(CircleLinkNode*, CircleLinkNode*);
+
+// 打印函数 指针(回调函数)
+typedef void(*PRINTCIRCLELINKNODE)(CircleLinkNode*);
+
+#define CIRCLELINKLIST_TRUE 1
+#define CIRCLELINKLIST_FALSE 0
+
+// 初始化函数
+CircleLinkList* Init_CircleLinkList() {
+	CircleLinkList* list = (CircleLinkList*)malloc(sizeof(CircleLinkList));
+	if (list == NULL)
+	{
+		return NULL;
+	}
+	list->head.next = &(list->head);
+	list->size = 0;
+	return list;
+}
+
+// 插入函数
+void Insert_CircleLinkList(CircleLinkList* list, int pos, CircleLinkNode* data) {
+	if (list == NULL || data == NULL)
+	{
+		return;
+	}
+	if (pos<0 || pos > list->size)
+	{
+		pos = list->size;
+	}
+	// 查找要插入位置的上一个节点, 索引为(pos-1)的节点
+	CircleLinkNode* prev_node = &(list->head);
+	for (int i = 0; i < pos; i++)
+	{
+		prev_node = prev_node->next;
+	}
+
+	data->next = prev_node->next;
+	prev_node->next = data;
+	list->size++;
+}
+
+// 获得第一个元素
+CircleLinkNode* Front_CircleLinkList(CircleLinkList* list) {
+	if (list == NULL || list->size <= 0)
+	{
+		return NULL;
+	}
+	return list->head.next;
+}
+
+// 根据位置删除
+void RemoveByPos_CircleLinkList(CircleLinkList* list, int pos) {
+	if (list == NULL)
+	{
+		return;
+	}
+	if (pos < 0 || pos >= list->size)
+	{
+		return;
+	}
+	CircleLinkNode* prev_node = &(list->head);
+	for (int i = 0; i < pos; i++)
+	{
+		prev_node = prev_node->next;
+	}
+	// 缓存当前节点, 此节点不是框架申请的, 所以这里最好不要释放掉, 所有的节点都是用户malloc出来的, 让用户去管理即可
+	CircleLinkNode* current_node = prev_node->next;
+	prev_node->next = prev_node->next->next;
+	/*free(current_node);*/
+	list->size--;
+}
+
+// 根据值删除
+void RemoveByValue_CircleLinkList(CircleLinkList* list, CircleLinkNode* data, COMPARECIRCLELINKNODE compare) {
+	if (list == NULL || data == NULL)
+	{
+		return;
+	}
+	CircleLinkNode* current_node = list->head.next;
+	CircleLinkNode* prev_node = &(list->head);
+	while (current_node != &(list->head))
+	{		
+		if (compare(current_node, data) == CIRCLELINKLIST_TRUE)
+		{
+			prev_node->next = current_node->next;
+			break;
+		}
+		prev_node = current_node;
+		current_node = current_node->next;
+	}
+}
+
+// 获取链表的长度
+int Size_CircleLinkList(CircleLinkList* list) {
+	if (list == NULL)
+	{
+		return -1;
+	}
+	return list->size;
+}
+
+// 判断是否为空
+int IsEmpty_CircleLinkList(CircleLinkList* list) {
+	if (list->size == 0)
+	{
+		return CIRCLELINKLIST_TRUE;
+	}
+	else {
+		return CIRCLELINKLIST_FALSE;
+	}
+}
+
+// 查找数据的索引
+int Find_CircleLinkList(CircleLinkList* list, CircleLinkNode* data, COMPARECIRCLELINKNODE compare) {
+	if (list == NULL || data == NULL)
+	{
+		return -1;
+	}
+	CircleLinkNode* current_node = list->head.next;
+	int index = 0;
+	while (current_node != &(list->head))
+	{
+		if (compare(current_node, data) == CIRCLELINKLIST_TRUE)
+		{
+			return index;
+		}
+		current_node = current_node->next;
+		index++;
+	}
+	return -1;
+}
+
+// 打印节点
+void Print_CircleLinkList(CircleLinkList* list, PRINTCIRCLELINKNODE print) {
+	if (list == NULL)
+	{
+		return;
+	}
+	CircleLinkNode* current_node = list->head.next;
+	while (current_node != &(list->head))
+	{
+		print(current_node);
+		current_node = current_node->next;
+	}
+}
+
+// 释放内存, 只释放框架自己malloc出来的空间, 即CircleLinkList的空间, 节点空间属于用户创建的, 由用户处理
+void FreeSpace_CircleLinkList(CircleLinkList* list) {
+	if (list == NULL)
+	{
+		return;
+	}
+	free(list);
+}
+
+// 测试
+// 测试自定义数据
+typedef struct TEACHER {
+	CircleLinkNode node;
+	char name[64];
+	int age;
+}Teacher;
+// 定义符合打印函数指针的函数
+void PrintCircleLinkNode(CircleLinkNode* data) {
+	if (data == NULL)
+	{
+		return;
+	}
+	Teacher* t = (Teacher*)data;
+	printf("name: %s, age: %d\n", t->name, t->age);
+}
+// 定义符合比较节点函数指针的函数
+int CompareCircleLinkNode(CircleLinkNode* data1, CircleLinkNode* data2) {
+	if (data1 == NULL || data2 == NULL)
+	{
+		return CIRCLELINKLIST_FALSE;
+	}
+	Teacher* t1 = (Teacher*)data1;
+	Teacher* t2 = (Teacher*)data2;
+	if (strcmp(t1->name, t2->name) == 0 && t1->age == t2->age)
+	{
+		return CIRCLELINKLIST_TRUE;
+	}
+	else {
+		return CIRCLELINKLIST_FALSE;
+	}
+}
+void test_ciclelinklist() {
+	CircleLinkList* list = Init_CircleLinkList();
+	Teacher t1, t2, t3, t4, t5;
+	strcpy(t1.name, "zhangsan");
+	strcpy(t2.name, "lisi");
+	strcpy(t3.name, "wangwu");
+	strcpy(t4.name, "zhaoliu");
+	strcpy(t5.name, "tianqi");
+	t1.age = 21;
+	t2.age = 22;
+	t3.age = 23;
+	t4.age = 24;
+	t5.age = 25;
+	// 数据入链表
+	Insert_CircleLinkList(list, 0, (CircleLinkNode*)&t1);
+	Insert_CircleLinkList(list, 1, (CircleLinkNode*)&t2);
+	Insert_CircleLinkList(list, 2, (CircleLinkNode*)&t3);
+	Insert_CircleLinkList(list, 3, (CircleLinkNode*)&t4);
+	Insert_CircleLinkList(list, 4, (CircleLinkNode*)&t5);
+
+	Teacher t;
+	t.age = 23;
+	strcpy(t.name, "wangwu");
+	// RemoveByValue_CircleLinkList(list, (CircleLinkNode*)&t, CompareCircleLinkNode);
+	int wangwu_pos = Find_CircleLinkList(list, (CircleLinkNode*)&t, CompareCircleLinkNode);
+	printf("wangwu's index is %d\n", wangwu_pos);
+
+	Print_CircleLinkList(list, PrintCircleLinkNode);
+	FreeSpace_CircleLinkList(list);
+}
+#pragma endregion
+
+
+=================================C++进阶 数据结构>> 约瑟夫问题-循环链表的典型应用===================================
+例题: m个人围城一个圆圈, 首先第一个人从1开始一个人一个人顺时针报数, 报到第n个人的时候, 令其出列. 然后再从下一个人开始顺时针报数, 报到第n个人, 再令其出列, ..., 如此下去, 求出列顺序
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
